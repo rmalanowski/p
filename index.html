@@ -17,11 +17,6 @@
     </button>
   </header>
 
-  <nav class="modes" role="tablist" aria-label="Game mode">
-    <button role="tab" data-mode="daily" id="tab-daily">Daily</button>
-    <button role="tab" data-mode="practice" id="tab-practice">Practice</button>
-  </nav>
-
   <main>
     <p class="puzzle-info" id="puzzle-info"></p>
     <div class="board" id="board" aria-live="polite"></div>
@@ -33,7 +28,7 @@
     </div>
     <div class="actions" id="actions" hidden>
       <button class="pill" id="result-btn">See result</button>
-      <button class="pill primary" id="new-game-btn" hidden>New practice game</button>
+      <button class="pill primary" id="new-game-btn">New game</button>
     </div>
   </main>
 
@@ -61,18 +56,17 @@
     </div>
     <p class="legend"><span class="tile mini match">p</span> letter already in the right spot for POOP
       <br><span class="tile mini changed">x</span> the letter you changed</p>
-    <p><strong>Daily</strong> has one puzzle a day, the same for everyone. <strong>Practice</strong> lets you play as many as you like. Each mode keeps its own stats.</p>
+    <p>Play as many games as you like. Each one starts from a new random word.</p>
     <p>Scoring works like golf: hit par for a <em>Par</em>, one over for a <em>Bogey</em>, and so on.</p>
   </dialog>
 
   <dialog id="stats-dialog" class="dialog">
     <button class="close" aria-label="Close">×</button>
     <div id="result-panel"></div>
-    <h2 id="stats-title">Statistics</h2>
+    <h2>Statistics</h2>
     <div class="stat-row" id="stat-row"></div>
     <h3>Score distribution</h3>
     <div class="dist" id="dist"></div>
-    <div id="next-daily" class="next-daily"></div>
     <h3>Recent games</h3>
     <ol class="history" id="history"></ol>
   </dialog>

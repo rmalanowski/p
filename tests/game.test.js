@@ -37,42 +37,24 @@ test("checkMove rejects illegal moves", () => {
   assert.strictEqual(P.checkMove("cool", ["coal"], dict), null);
 });
 
-test("daily puzzles are deterministic and cycle through the list", () => {
-  assert.strictEqual(P.puzzleNumber(P.LAUNCH_DAY), 1);
-  assert.strictEqual(P.dailyStart(P.LAUNCH_DAY, W.START_WORDS), W.START_WORDS[0]);
-  assert.strictEqual(P.dailyStart("2026-09-29", W.START_WORDS), W.START_WORDS[1]);
-  assert.strictEqual(P.addDays("2026-03-01", -1), "2026-02-28");
-  assert.strictEqual(P.addDays("2026-12-31", 1), "2027-01-01");
-  const later = P.addDays(P.LAUNCH_DAY, W.START_WORDS.length);
-  assert.strictEqual(P.dailyStart(later, W.START_WORDS), W.START_WORDS[0]);
-});
-
 test("scoring and streaks", () => {
-  const win = (day, chain, par) => ({ day, chain, par, won: true });
+  const win = (chain, par) => ({ chain, par, won: true });
   let s = P.emptyStats();
-  s = P.recordResult(s, win("2026-10-01", ["coal", "cool", "pool", "poop"], 3), "daily");
-  s = P.recordResult(s, win("2026-10-02", ["a", "b", "c", "d", "poop"], 3), "daily");
-  assert.strictEqual(s.streak, 2);
-  assert.deepStrictEqual([s.dist[0], s.dist[1]], [1, 1]);
-  assert.strictEqual(P.currentStreak(s, "daily", "2026-10-03"), 2);
-  assert.strictEqual(P.currentStreak(s, "daily", "2026-10-04"), 0);
-  // A skipped day restarts the streak.
-  s = P.recordResult(s, win("2026-10-05", ["x", "poop"], 1), "daily");
-  assert.strictEqual(s.streak, 1);
-  assert.strictEqual(s.maxStreak, 2);
-  s = P.recordResult(s, { day: "2026-10-06", chain: ["x"], par: 3, won: false }, "daily");
-  assert.deepStrictEqual([s.streak, s.played, s.wins, s.dist.miss], [0, 4, 3, 1]);
-
-  let p = P.emptyStats();
-  p = P.recordResult(p, win("2026-10-01", ["x", "poop"], 1), "practice");
-  p = P.recordResult(p, win("2026-12-25", ["x", "poop"], 1), "practice");
-  assert.strictEqual(p.streak, 2);
+  s = P.recordResult(s, win(["coal", "cool", "pool", "poop"], 3));
+  s = P.recordResult(s, win(["a", "b", "c", "d", "poop"], 3));
+  assert.deepStrictEqual([s.streak, s.maxStreak, s.dist[0], s.dist[1]], [2, 2, 1, 1]);
+  s = P.recordResult(s, { chain: ["x"], par: 3, won: false });
+  assert.deepStrictEqual([s.streak, s.maxStreak, s.played, s.wins, s.dist.miss], [0, 2, 3, 2, 1]);
+  s = P.recordResult(s, win(["x", "poop"], 1));
+  assert.deepStrictEqual([s.streak, s.maxStreak], [1, 2]);
+  assert.strictEqual(P.resultName({ chain: ["x"], par: 3, won: false }), "Miss");
+  assert.strictEqual(P.resultName(win(["a", "b", "c", "d", "e", "poop"], 3)), "Double Bogey");
 });
 
 test("share text", () => {
-  const g = { day: P.LAUNCH_DAY, chain: ["coal", "cool", "pool", "poop"], par: 3, won: true };
+  const g = { start: "coal", chain: ["coal", "cool", "pool", "poop"], par: 3, won: true };
   assert.strictEqual(
-    P.shareText(g, "daily"),
-    "Poople #1 3/6 · Par 3 · Par\n⬜🟫⬜⬜\n⬜🟫🟨⬜\n🟨🟫🟫⬜\n💩💩💩💩"
+    P.shareText(g),
+    "Poople: COAL 3/6 · Par 3 · Par\n⬜🟫⬜⬜\n⬜🟫🟨⬜\n🟨🟫🟫⬜\n💩💩💩💩"
   );
 });
