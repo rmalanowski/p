@@ -3,7 +3,6 @@
 (function (root) {
   const TARGET = "poop";
   const MAX_MOVES = 6;
-  const LAUNCH_DAY = "2026-09-28"; // Daily puzzle #1
 
   function makeSet(spaceSeparated) {
     return new Set(spaceSeparated.split(" "));
@@ -82,25 +81,6 @@
     return `${y}-${m}-${d}`;
   }
 
-  function dayNumber(key) {
-    const [y, m, d] = key.split("-").map(Number);
-    return Math.round(Date.UTC(y, m - 1, d) / 86400000);
-  }
-
-  function addDays(key, n) {
-    const date = new Date((dayNumber(key) + n) * 86400000);
-    return date.toISOString().slice(0, 10);
-  }
-
-  function puzzleNumber(key) {
-    return dayNumber(key) - dayNumber(LAUNCH_DAY) + 1;
-  }
-
-  function dailyStart(key, starts) {
-    const n = puzzleNumber(key) - 1;
-    return starts[((n % starts.length) + starts.length) % starts.length];
-  }
-
   // --- Scoring -----------------------------------------------------------
 
   const RESULT_NAMES = ["Par", "Bogey", "Double Bogey", "Triple Bogey"];
@@ -121,38 +101,28 @@
       wins: 0,
       streak: 0,
       maxStreak: 0,
-      lastDay: null, // daily only: last day a result was recorded
       dist: { 0: 0, 1: 0, 2: 0, 3: 0, miss: 0 },
     };
   }
 
-  // Daily streak counts consecutive days won; practice counts consecutive wins.
-  function recordResult(stats, game, mode) {
+  // The streak counts consecutive wins.
+  function recordResult(stats, game) {
     const s = JSON.parse(JSON.stringify(stats));
     s.played++;
     s.dist[scoreKey(game)] = (s.dist[scoreKey(game)] || 0) + 1;
     if (game.won) {
       s.wins++;
-      const continues = mode !== "daily" || s.lastDay === addDays(game.day, -1);
-      s.streak = continues ? s.streak + 1 : 1;
+      s.streak++;
       s.maxStreak = Math.max(s.maxStreak, s.streak);
     } else {
       s.streak = 0;
     }
-    if (mode === "daily") s.lastDay = game.day;
     return s;
   }
 
-  // A daily streak is broken once a whole day passes without a result.
-  function currentStreak(stats, mode, today) {
-    if (mode !== "daily" || !stats.lastDay) return stats.streak;
-    return stats.lastDay >= addDays(today, -1) ? stats.streak : 0;
-  }
-
-  function shareText(game, mode) {
+  function shareText(game) {
     const moves = game.chain.length - 1;
-    const title =
-      mode === "daily" ? `Poople #${puzzleNumber(game.day)}` : "Poople (practice)";
+    const title = `Poople: ${game.start.toUpperCase()}`;
     const score = game.won ? `${moves}/${MAX_MOVES}` : `X/${MAX_MOVES}`;
     const rows = game.chain.map((word, i) => {
       if (word === TARGET) return "💩💩💩💩";
@@ -169,7 +139,6 @@
   const api = {
     TARGET,
     MAX_MOVES,
-    LAUNCH_DAY,
     createDictionary,
     neighbors,
     shortestPath,
@@ -177,14 +146,10 @@
     letterDiff,
     checkMove,
     dayKey,
-    addDays,
-    puzzleNumber,
-    dailyStart,
     scoreKey,
     resultName,
     emptyStats,
     recordResult,
-    currentStreak,
     shareText,
   };
 

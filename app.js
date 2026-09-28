@@ -14,17 +14,31 @@
   let state = loadState();
   let current = ""; // letters typed on the active row
   let busy = false; // true while a reveal animation is running
-  let countdownTimer = null;
 
   // --- Persistence -------------------------------------------------------
 
   function defaultState() {
+    return { seenHelp: false, game: null, stats: P.emptyStats(), history: [] };
+  }
+
+  // Earlier versions kept separate daily and practice slots. Fold them into one.
+  function migrate(saved) {
+    if (!saved.daily && !saved.practice) return saved;
+    const stats = P.emptyStats();
+    for (const old of [saved.daily, saved.practice]) {
+      if (!old || !old.stats) continue;
+      stats.played += old.stats.played || 0;
+      stats.wins += old.stats.wins || 0;
+      stats.maxStreak = Math.max(stats.maxStreak, old.stats.maxStreak || 0);
+      for (const k of Object.keys(stats.dist)) stats.dist[k] += (old.stats.dist || {})[k] || 0;
+    }
+    stats.streak = (saved.practice && saved.practice.stats && saved.practice.stats.streak) || 0;
+    const inProgress = [saved.practice, saved.daily].find((o) => o && o.game && o.game.status === "playing");
     return {
-      mode: "daily",
-      seenHelp: false,
-      daily: { game: null, stats: P.emptyStats() },
-      practice: { game: null, stats: P.emptyStats() },
-      history: [],
+      seenHelp: saved.seenHelp,
+      game: inProgress ? inProgress.game : null,
+      stats,
+      history: saved.history || [],
     };
   }
 
@@ -33,12 +47,8 @@
     try {
       const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
       if (saved && typeof saved === "object") {
-        return {
-          ...base,
-          ...saved,
-          daily: { ...base.daily, ...saved.daily },
-          practice: { ...base.practice, ...saved.practice },
-        };
+        const migrated = migrate(saved);
+        return { ...base, ...migrated, stats: { ...base.stats, ...migrated.stats } };
       }
     } catch (e) {
       // Storage unavailable or corrupt: start fresh.
@@ -57,31 +67,24 @@
   // --- Games -------------------------------------------------------------
 
   const today = () => P.dayKey(new Date());
-  const slot = () => state[state.mode];
-  const game = () => slot().game;
+  const game = () => state.game;
 
   function newGame(start) {
     const { par } = P.solve(start, dict);
     return { day: today(), start, par, chain: [start], status: "playing" };
   }
 
-  function randomPracticeStart() {
-    const daily = P.dailyStart(today(), START_WORDS);
-    const previous = state.practice.game && state.practice.game.start;
-    let word;
-    do {
-      word = START_WORDS[Math.floor(Math.random() * START_WORDS.length)];
-    } while (word === daily || word === previous);
-    return word;
+  // Pick a start word the player hasn't seen recently.
+  function randomStart() {
+    const recent = new Set(state.history.slice(0, START_WORDS.length - 1).map((h) => h.start));
+    if (state.game) recent.add(state.game.start);
+    const fresh = START_WORDS.filter((w) => !recent.has(w));
+    const pool = fresh.length ? fresh : START_WORDS;
+    return pool[Math.floor(Math.random() * pool.length)];
   }
 
   function ensureGame() {
-    if (state.mode === "daily") {
-      const g = state.daily.game;
-      if (!g || g.day !== today()) state.daily.game = newGame(P.dailyStart(today(), START_WORDS));
-    } else if (!state.practice.game) {
-      state.practice.game = newGame(randomPracticeStart());
-    }
+    if (!state.game) state.game = newGame(randomStart());
     save();
   }
 
@@ -132,24 +135,13 @@
 
   function renderInfo() {
     const g = game();
-    const label = state.mode === "daily" ? `Daily #${P.puzzleNumber(g.day)}` : "Practice";
     const moves = g.chain.length - 1;
     $("puzzle-info").innerHTML =
-      `${label} · Par <strong>${g.par}</strong> · Moves <strong>${moves}/${P.MAX_MOVES}</strong>`;
-
-    const done = g.status !== "playing";
-    $("actions").hidden = !done;
-    $("new-game-btn").hidden = !(done && state.mode === "practice");
-  }
-
-  function renderTabs() {
-    document.querySelectorAll(".modes button").forEach((b) => {
-      b.setAttribute("aria-selected", String(b.dataset.mode === state.mode));
-    });
+      `Par <strong>${g.par}</strong> · Moves <strong>${moves}/${P.MAX_MOVES}</strong>`;
+    $("actions").hidden = g.status === "playing";
   }
 
   function render() {
-    renderTabs();
     renderInfo();
     renderBoard();
   }
@@ -273,9 +265,8 @@
 
   function recordFinish(g) {
     g.won = g.status === "won";
-    slot().stats = P.recordResult(slot().stats, g, state.mode);
+    state.stats = P.recordResult(state.stats, g);
     state.history.unshift({
-      mode: state.mode,
       day: g.day,
       start: g.start,
       par: g.par,
@@ -318,24 +309,20 @@
     const share = Object.assign(document.createElement("button"), { className: "pill primary", textContent: "Share" });
     share.addEventListener("click", () => shareResult(g));
     buttons.appendChild(share);
-    if (state.mode === "practice") {
-      const again = Object.assign(document.createElement("button"), { className: "pill", textContent: "New game" });
-      again.addEventListener("click", startPractice);
-      buttons.appendChild(again);
-    }
+    const again = Object.assign(document.createElement("button"), { className: "pill", textContent: "New game" });
+    again.addEventListener("click", startNewGame);
+    buttons.appendChild(again);
     wrap.appendChild(buttons);
     panel.appendChild(wrap);
   }
 
   function statsPanel() {
-    const stats = slot().stats;
-    const streak = P.currentStreak(stats, state.mode, today());
-    $("stats-title").textContent = state.mode === "daily" ? "Daily statistics" : "Practice statistics";
+    const stats = state.stats;
     const winPct = stats.played ? Math.round((stats.wins / stats.played) * 100) : 0;
     $("stat-row").innerHTML = [
       [stats.played, "Played"],
       [winPct, "Win %"],
-      [streak, state.mode === "daily" ? "Day streak" : "Win streak"],
+      [stats.streak, "Win streak"],
       [stats.maxStreak, "Max streak"],
     ]
       .map(([n, l]) => `<div><div class="num">${n}</div><div class="lbl">${l}</div></div>`)
@@ -358,41 +345,22 @@
     $("history").innerHTML = recent.length
       ? recent
           .map((h) => {
-            const name = h.mode === "daily" ? `#${P.puzzleNumber(h.day)}` : "Practice";
             const res = P.resultName({ won: h.won, chain: h.chain, par: h.par });
-            return `<li><span>${name} · <span class="word">${h.start}</span></span>
+            return `<li><span><span class="word">${h.start}</span> · par ${h.par}</span>
               <span class="${h.won ? "" : "res-miss"}">${h.won ? `${h.moves} moves · ` : ""}${res}</span></li>`;
           })
           .join("")
       : `<li class="empty">No games yet</li>`;
   }
 
-  function tickCountdown() {
-    const el = $("next-daily");
-    if (state.mode !== "daily") {
-      el.innerHTML = "";
-      return;
-    }
-    const now = new Date();
-    const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-    const secs = Math.max(0, Math.floor((midnight - now) / 1000));
-    const pad = (n) => String(n).padStart(2, "0");
-    const hms = `${pad(Math.floor(secs / 3600))}:${pad(Math.floor((secs % 3600) / 60))}:${pad(secs % 60)}`;
-    el.innerHTML = `Next daily Poople in <strong>${hms}</strong>`;
-    if (game().day !== today()) refreshDay();
-  }
-
   function openStats() {
     resultPanel();
     statsPanel();
-    tickCountdown();
-    clearInterval(countdownTimer);
-    countdownTimer = setInterval(tickCountdown, 1000);
     if (!statsDialog.open) statsDialog.showModal();
   }
 
   async function shareResult(g) {
-    const text = P.shareText(g, state.mode) + "\n" + location.href.split("#")[0];
+    const text = P.shareText(g) + "\n" + location.href.split("#")[0];
     try {
       await navigator.clipboard.writeText(text);
       toast("Copied results to clipboard");
@@ -407,31 +375,12 @@
 
   // --- Mode / lifecycle --------------------------------------------------
 
-  function setMode(mode) {
-    if (busy || mode === state.mode) return;
-    state.mode = mode;
-    current = "";
-    ensureGame();
-    render();
-  }
-
-  function startPractice() {
-    state.practice.game = newGame(randomPracticeStart());
-    state.mode = "practice";
+  function startNewGame() {
+    state.game = newGame(randomStart());
     current = "";
     save();
     if (statsDialog.open) statsDialog.close();
     render();
-  }
-
-  // Called when the date changes while the page is open.
-  function refreshDay() {
-    if (state.mode === "daily" && state.daily.game && state.daily.game.day !== today()) {
-      current = "";
-      ensureGame();
-      render();
-      if (statsDialog.open) statsDialog.close();
-    }
   }
 
   function closeOnBackdrop(dialog) {
@@ -464,20 +413,13 @@
       }
     });
 
-    document.querySelectorAll(".modes button").forEach((b) => {
-      b.addEventListener("click", () => setMode(b.dataset.mode));
-    });
 
     $("help-btn").addEventListener("click", () => helpDialog.showModal());
     $("stats-btn").addEventListener("click", openStats);
     $("result-btn").addEventListener("click", openStats);
-    $("new-game-btn").addEventListener("click", startPractice);
+    $("new-game-btn").addEventListener("click", startNewGame);
     closeOnBackdrop(helpDialog);
     closeOnBackdrop(statsDialog);
-    statsDialog.addEventListener("close", () => clearInterval(countdownTimer));
-    document.addEventListener("visibilitychange", () => {
-      if (!document.hidden) refreshDay();
-    });
 
     if (!state.seenHelp) {
       state.seenHelp = true;

@@ -93,29 +93,6 @@ button {
   place-items: center;
 }
 
-.modes {
-  display: flex;
-  gap: 4px;
-  margin-top: 10px;
-  padding: 4px;
-  border-radius: 999px;
-  background: var(--plain);
-}
-
-.modes button {
-  border: 0;
-  background: none;
-  padding: 6px 18px;
-  border-radius: 999px;
-  font-weight: 600;
-  color: var(--muted);
-}
-
-.modes button[aria-selected="true"] {
-  background: var(--accent);
-  color: #fff;
-}
-
 /* --- Board ------------------------------------------------------------- */
 
 main {
@@ -405,8 +382,6 @@ main {
 
 .dist-bar.current { background: var(--match); color: var(--match-fg); }
 
-.next-daily { text-align: center; margin-top: 14px; color: var(--muted); }
-.next-daily strong { color: var(--fg); font-variant-numeric: tabular-nums; }
 
 .history {
   list-style: none;

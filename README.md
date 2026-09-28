@@ -5,10 +5,9 @@ by changing one letter at a time. Every step has to be a real English word, and 
 
 ## Features
 
-- **Daily puzzle.** Everyone gets the same puzzle each day (resets at local midnight), and your streak counts consecutive days solved.
-- **Practice mode.** Unlimited random puzzles, with a streak that counts consecutive wins.
+- **Unlimited play.** Every game starts from a new random word, and your streak counts consecutive wins.
 - **Golf scoring.** Every puzzle has a par, which is the fewest moves possible. Results are Par, Bogey, Double Bogey, Triple Bogey or Miss.
-- **Stats and history** are saved in `localStorage` and kept separately for each mode, along with your recent games.
+- **Stats and history** are saved in `localStorage`, along with your recent games.
 - **Shareable emoji results** and the best path shown after every game.
 - Works with the on-screen or a physical keyboard, adapts to light and dark mode, and needs no dependencies.
 
