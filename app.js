@@ -235,6 +235,8 @@
       return;
     }
     renderBoard();
+    // The fourth letter submits the move; Enter re-submits after a rejection.
+    if (current.length === 4) submit();
   }
 
   function submit() {
