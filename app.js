@@ -14,6 +14,7 @@
   let state = loadState();
   let current = ""; // letters typed on the active row
   let busy = false; // true while a reveal animation is running
+  let giveUpTimer = null; // set while "I suck" is waiting for a second tap
 
   // --- Persistence -------------------------------------------------------
 
@@ -138,7 +139,11 @@
     const moves = g.chain.length - 1;
     $("puzzle-info").innerHTML =
       `Par <strong>${g.par}</strong> · Moves <strong>${moves}/${P.MAX_MOVES}</strong>`;
-    $("actions").hidden = g.status === "playing";
+    const playing = g.status === "playing";
+    $("give-up-btn").hidden = !playing;
+    $("result-btn").hidden = playing;
+    $("new-game-btn").hidden = playing;
+    disarmGiveUp();
   }
 
   function render() {
@@ -178,10 +183,16 @@
 
   // --- Feedback ----------------------------------------------------------
 
-  function toast(message, ms = 1400) {
+  function toast(message, ms = 1400, detail = "") {
     const el = document.createElement("div");
     el.className = "toast";
     el.textContent = message;
+    if (detail) {
+      const small = document.createElement("div");
+      small.className = "toast-detail";
+      small.textContent = detail;
+      el.appendChild(small);
+    }
     $("toasts").prepend(el);
     setTimeout(() => el.classList.add("fade"), ms);
     setTimeout(() => el.remove(), ms + 400);
@@ -272,6 +283,7 @@
       par: g.par,
       moves: g.chain.length - 1,
       won: g.won,
+      gaveUp: Boolean(g.gaveUp),
       chain: g.chain.slice(),
     });
     state.history = state.history.slice(0, HISTORY_LIMIT);
@@ -283,6 +295,36 @@
     const praise = { Par: "Par! Perfect poop 🏆", Bogey: "Bogey! Nice.", "Double Bogey": "Made it!" };
     toast(praise[P.resultName(g)] || "Phew! Poop achieved.", 2000);
     setTimeout(openStats, 2200);
+  }
+
+  // --- Giving up ---------------------------------------------------------
+
+  function disarmGiveUp() {
+    clearTimeout(giveUpTimer);
+    giveUpTimer = null;
+    const btn = $("give-up-btn");
+    btn.textContent = "I suck";
+    btn.classList.remove("armed");
+  }
+
+  // First tap asks for confirmation; a second tap within 3s records a loss
+  // and starts a new game.
+  function giveUp() {
+    const g = game();
+    if (busy || g.status !== "playing") return;
+    const btn = $("give-up-btn");
+    if (!giveUpTimer) {
+      btn.textContent = "Really? Tap again";
+      btn.classList.add("armed");
+      giveUpTimer = setTimeout(disarmGiveUp, 3000);
+      return;
+    }
+    g.status = "lost";
+    g.gaveUp = true;
+    recordFinish(g);
+    const { solution } = P.solve(g.start, dict);
+    startNewGame();
+    toast("Counted as a loss", 3500, `Best path: ${solution.join(" → ").toUpperCase()}`);
   }
 
   // --- Stats dialog ------------------------------------------------------
@@ -345,7 +387,7 @@
     $("history").innerHTML = recent.length
       ? recent
           .map((h) => {
-            const res = P.resultName({ won: h.won, chain: h.chain, par: h.par });
+            const res = h.gaveUp ? "Gave up" : P.resultName({ won: h.won, chain: h.chain, par: h.par });
             return `<li><span><span class="word">${h.start}</span> · par ${h.par}</span>
               <span class="${h.won ? "" : "res-miss"}">${h.won ? `${h.moves} moves · ` : ""}${res}</span></li>`;
           })
@@ -418,6 +460,7 @@
     $("stats-btn").addEventListener("click", openStats);
     $("result-btn").addEventListener("click", openStats);
     $("new-game-btn").addEventListener("click", startNewGame);
+    $("give-up-btn").addEventListener("click", giveUp);
     closeOnBackdrop(helpDialog);
     closeOnBackdrop(statsDialog);
 
