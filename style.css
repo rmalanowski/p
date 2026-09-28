@@ -1,4 +1,7 @@
 :root {
+  /* Tiles and keys scale with the visible height so the game fits one screen. */
+  --tile: min(12.5vw, 52px, 6.1vh);
+  --key-h: clamp(34px, 6vh, 54px);
   --bg: #fbf8f3;
   --fg: #2a211b;
   --muted: #7d7066;
@@ -16,6 +19,13 @@
   --danger: #b3412f;
   --dialog-bg: #ffffff;
   --shadow: 0 10px 40px rgba(42, 33, 27, 0.25);
+}
+
+@supports (height: 100dvh) {
+  :root {
+    --tile: min(12.5vw, 52px, 6.1dvh);
+    --key-h: clamp(34px, 6dvh, 54px);
+  }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -70,20 +80,20 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 16px;
+  padding: calc(4px + env(safe-area-inset-top)) 16px 4px;
   border-bottom: 1px solid var(--border);
 }
 
 .topbar h1 {
   margin: 0;
-  font-size: 1.9rem;
+  font-size: 1.6rem;
   font-weight: 800;
   letter-spacing: 0.04em;
 }
 
 .icon-btn {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   border: 2px solid var(--border-strong);
   background: none;
@@ -101,8 +111,8 @@ main {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 8px 16px;
+  gap: 6px;
+  padding: 6px 16px;
   width: 100%;
 }
 
@@ -138,13 +148,13 @@ main {
 }
 
 .tile {
-  width: min(13vw, 56px);
-  height: min(13vw, 56px);
+  width: var(--tile);
+  height: var(--tile);
   border: 2px solid var(--border);
   background: var(--tile-bg);
   display: grid;
   place-items: center;
-  font-size: min(7vw, 2rem);
+  font-size: calc(var(--tile) * 0.55);
   font-weight: 800;
   text-transform: uppercase;
   user-select: none;
@@ -170,11 +180,9 @@ main {
 
 .goal {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 4px;
-  margin-top: 6px;
-  padding-top: 8px;
+  gap: 8px;
+  padding-top: 6px;
   border-top: 2px dotted var(--border);
 }
 
@@ -187,15 +195,14 @@ main {
 }
 
 .goal-row .tile {
-  width: min(9vw, 36px);
-  height: min(9vw, 36px);
-  font-size: min(5vw, 1.2rem);
+  width: 26px;
+  height: 26px;
+  font-size: 0.9rem;
 }
 
 .actions {
   display: flex;
   gap: 8px;
-  margin-top: 6px;
 }
 
 .actions[hidden], .pill[hidden] { display: none; }
@@ -219,10 +226,10 @@ main {
 .keyboard {
   width: 100%;
   max-width: 500px;
-  padding: 0 6px calc(10px + env(safe-area-inset-bottom));
+  padding: 0 6px calc(6px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 6px;
 }
 
 .kb-row {
@@ -233,7 +240,7 @@ main {
 
 .key {
   flex: 1;
-  height: 54px;
+  height: var(--key-h);
   border: 0;
   border-radius: 5px;
   background: var(--key-bg);
@@ -435,11 +442,6 @@ main {
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
-}
-
-@media (max-height: 700px) {
-  .tile { width: min(11vw, 44px); height: min(11vw, 44px); font-size: 1.5rem; }
-  .key { height: 46px; }
 }
 
 .close:focus:not(:focus-visible) { outline: none; }
