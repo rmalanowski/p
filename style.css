@@ -216,6 +216,11 @@ main {
   font-weight: 700;
 }
 
+.pill.armed {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
 .pill.primary {
   background: var(--accent);
   color: #fff;
@@ -260,7 +265,7 @@ main {
 
 .toast-area {
   position: fixed;
-  top: 70px;
+  top: calc(6px + env(safe-area-inset-top));
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -277,10 +282,12 @@ main {
   border-radius: 6px;
   font-weight: 700;
   text-align: center;
+  max-width: calc(100vw - 32px);
   transition: opacity 0.3s;
 }
 
 .toast.fade { opacity: 0; }
+.toast-detail { font-size: 0.8rem; font-weight: 600; margin-top: 2px; opacity: 0.85; }
 
 .poop-rain {
   position: fixed;
